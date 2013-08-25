@@ -11,27 +11,49 @@
 -- A player is a 3D coordinate: R,C,gate
 --
 -----------------------------------------------------------------------------------------
-PATH_WIDTH = 4
-OUTLINE_WIDTH = 3
-TILE_SIZE = 150 
-BOARD_SIZE = 4
-PLAYER_SIZE = 10
-PATH_STRIDE = TILE_SIZE/3
-TILE_GATE = {{PATH_STRIDE,0},{PATH_STRIDE*2,0},
-               {TILE_SIZE, PATH_STRIDE}, {TILE_SIZE, PATH_STRIDE*2},
-               {PATH_STRIDE*2,TILE_SIZE}, {PATH_STRIDE, TILE_SIZE},
-               {0, PATH_STRIDE*2}, {0, PATH_STRIDE}}
-EMPTY_TILE = {1,2,3,4,5,6,7,8}
-TILE1 = {3,4,5,6,7,8,1,2}
-TILE2 = {4,5,6,7,8,1,2,3}
-TILE3 = {5,6,7,8,1,2,3,4}
+--local pieces = require("pieces")
+function Gate(x,y,dr,dc,dg)
+  local gate={}
+  gate.x = x
+  gate.y = y
+  gate.dr = dr --delta row (which row direction does this gate connect with)
+  gate.dc = dc --delta col (which column direction does this gate connect with)
+  gate.dg = dg --delta GATE (which gate does this gate connect with on another tile)
+  return gate
+end
 
-RED = {200,50,50}
-GREEN = {50,200,50}
-BLUE = {50,50,200}
+function Game(players)
+  local game = {}
+  game.player = Player(4,2,1,BLUE)
+  game.board = makeboard(BOARD_SIZE, EMPTY_TILE)
 
--- hide the status bar
-display.setStatusBar( display.HiddenStatusBar )
+  --Put a tile in a give place
+  function game:place(tile,r,c)
+    game.board[r][c] = tile
+  end
+
+  --Move players (if possible)
+  function game:advance()
+    local player = self.player
+    local gate = TILE_GATE[player.gate]
+    local newrow = gate.dr + player.r
+    local newcol = gate.dc + player.c
+
+    local offBoard = (newrow <= 0) or (newcol >= #game.board)
+                      or (newcol <=0) or (newcol >= #game.board)
+    if (offBoard) then return end
+    local newtile = game.board[newrow][newcol]
+    print("---", newrow, newcol, newtile == EMPTY_TILE)
+    if (newtile == EMPTY_TILE) then return end
+    print("---", player.r, player.c, newrow, newcol, newtile == EMPTY_TILE)
+    
+    local newgate = newtile[gate.dg]
+    local newplayer = Player(newrow, newcol, newgate, player.color)
+    game.player = newplayer
+  end
+
+  return game
+end
 
 function Player(r,c,gate,color) 
   local player = {}
@@ -42,12 +64,30 @@ function Player(r,c,gate,color)
   return player
 end
 
-function Game(players)
-  local game = {}
-  game.player = Player(2,2,5,BLUE)
-  game.board = makeboard(BOARD_SIZE, EMPTY_TILE)
-  return game
-end
+PATH_WIDTH = 4
+OUTLINE_WIDTH = 3
+TILE_SIZE = 150 
+BOARD_SIZE = 4
+PLAYER_SIZE = 10
+PATH_STRIDE = TILE_SIZE/3
+TILE_GATE = {Gate(PATH_STRIDE,  0,  -1,0,  6),
+             Gate(PATH_STRIDE*2,0,  -1,0,  5),
+             Gate(TILE_SIZE, PATH_STRIDE,  0,1,  8), 
+             Gate(TILE_SIZE, PATH_STRIDE*2,0,1,  7),
+             Gate(PATH_STRIDE*2,TILE_SIZE, 1,0,  2), 
+             Gate(PATH_STRIDE, TILE_SIZE,  1,0,  1),
+             Gate(0, PATH_STRIDE*2, 0,-1,4), 
+             Gate(0, PATH_STRIDE,   0,-1,3)}
+EMPTY_TILE = {1,2,3,4,5,6,7,8}
+CIRCLE_TILE = {3,4,5,6,7,8,1,2}  
+TILE2 = {4,5,6,7,8,1,2,3}
+X_TILE = {5,6,7,8,1,2,3,4}
+H_TILE = {6,5,8,7,2,1,4,3} 
+
+RED = {200,50,50}
+GREEN = {50,200,50}
+BLUE = {50,50,200}
+
 
 function makeboard(size, tile) 
   if (tile == nil) then
@@ -65,9 +105,9 @@ function makeboard(size, tile)
 end
 
 function lineEnds(i1, i2) 
-  p1 = TILE_GATE[i1]
-  p2 = TILE_GATE[i2]
-  return p1[1],p1[2],p2[1],p2[2]
+  g1 = TILE_GATE[i1]
+  g2 = TILE_GATE[i2]
+  return g1.x, g1.y, g2.x, g2.y 
   --return p1,p2
 end
 
@@ -117,8 +157,8 @@ function drawBoard(x,y,board, context)
 
   for r=1,#board do
     for c=1,#board[r] do
-      xx = (r-1)*TILE_SIZE+feather
-      yy = (c-1)*TILE_SIZE+feather
+      xx = (c-1)*TILE_SIZE+feather
+      yy = (r-1)*TILE_SIZE+feather
       drawTile(xx,yy,board[r][c],g)
     end
   end
@@ -127,8 +167,8 @@ end
 
 function drawPlayer(player, board, context)
   local gateloc = TILE_GATE[player.gate]
-  local x = ((player.r-1)*TILE_SIZE)+gateloc[1]
-  local y = ((player.c-1)*TILE_SIZE)+gateloc[2]
+  local x = ((player.c-1)*TILE_SIZE)+gateloc.x
+  local y = ((player.r-1)*TILE_SIZE)+gateloc.y
 
   local c = display.newCircle(x,y,PLAYER_SIZE)
   c:setFillColor(player.color[1], player.color[2], player.color[3])
@@ -136,13 +176,23 @@ function drawPlayer(player, board, context)
     context:insert(c)
   end
 end
---drawTile(10,10, TILE1, display)
---drawTile(10,500, TILE2, display)
---drawTile(10,200, EMPTY_TILE, display)
 
 function drawGame(game) 
   local displayBoard = drawBoard(10,10, game.board,display)
   drawPlayer(game.player,board,displayBoard)
 end
 
-drawGame(Game())
+-- hide the status bar
+display.setStatusBar( display.HiddenStatusBar )
+local game = Game()
+drawGame(game)
+game:place(H_TILE,1,2)
+game:place(H_TILE,2,2)
+game:place(H_TILE,3,2)
+drawGame(game)
+game:advance()
+game:advance()
+game:advance()
+drawGame(game)
+
+
