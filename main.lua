@@ -31,7 +31,8 @@ end
 function Game(players)
   local game = {}
   game.players = {Player(1,1,1,BLUE), Player(BOARD_SIZE, BOARD_SIZE, 5, RED)}
-  game.board = makeboard(BOARD_SIZE, EMPTY_TILE)
+  game.board = makegrid(BOARD_SIZE, EMPTY_TILE)
+  game.ownership = makegrid(BOARD_SIZE, 0)
 
   --Put a tile in a give place
   function game:place(tile,r,c)
@@ -43,19 +44,21 @@ function Game(players)
     for i=1,#self.players do
       local player = self.players[i]
 
-      if (isOffBoard(player, self.board)) then return end
+      if not(isOffBoard(player, self.board)) then 
 
-      local tile = game.board[player.r][player.c]
-      if (tile == EMPTY_TILE) then return end
+        local tile = game.board[player.r][player.c]
+        if (tile ~= EMPTY_TILE) then 
 
-      local togate  = tile[player.gate]
-      local newgate = TILE_GATE[togate]
-      local newrow = newgate.dr + player.r
-      local newcol = newgate.dc + player.c
-      local newplayer = Player(newrow, newcol, newgate.dg, player.color)
-      print (i, newrow, newcol)
+          local togate  = tile[player.gate]
+          local newgate = TILE_GATE[togate]
+          local newrow = newgate.dr + player.r
+          local newcol = newgate.dc + player.c
+          local newplayer = Player(newrow, newcol, newgate.dg, player.color)
+          game.ownership[player.r][player.c] = i
 
-      game.players[i] = newplayer
+          game.players[i] = newplayer
+        end
+      end
     end
   end
 
@@ -97,8 +100,7 @@ RED = {200,50,50}
 GREEN = {50,200,50}
 BLUE = {50,50,200}
 
-
-function makeboard(size, tile) 
+function makegrid(size, tile) 
   if (tile == nil) then
     tile = EMPTY_TILE
   end
@@ -139,6 +141,7 @@ function drawTile(x,y, tile, context)
     l1 = display.newLine(g,g1.x,g1.y,g2.x,g2.y)
     l1.width = PATH_WIDTH
   end
+  return r 
 end
 
 function drawBoard(x,y,board, context)
@@ -157,11 +160,14 @@ function drawBoard(x,y,board, context)
   g.yOrigin = y
   r:toBack()
 
+  g.tiles = {}
   for r=1,#board do
+    g.tiles[r] = {}
     for c=1,#board[r] do
       xx = (c-1)*TILE_SIZE+feather
       yy = (r-1)*TILE_SIZE+feather
-      drawTile(xx,yy,board[r][c],g)
+      local tile = drawTile(xx,yy,board[r][c],g)
+      g.tiles[r][c] = tile
     end
   end
   return g
@@ -177,8 +183,6 @@ function drawPlayer(player, board, context)
     fill = {180,180,180}
   end
 
-
-
   local c = display.newCircle(x,y,PLAYER_SIZE)
   c:setFillColor(fill[1], fill[2], fill[3])
   if (context ~= display) then
@@ -186,30 +190,63 @@ function drawPlayer(player, board, context)
   end
 end
 
-function drawGame(game) 
+function updateTilesForOwnership(displayBoard, game) 
+  for r=1,#game.board do
+    for c=1,#game.board do
+      local owner = game.ownership[r][c]
+      if (owner ~= 0) then
+        local tile = displayBoard.tiles[r][c]
+        print ("----", tile)
+        local color = game.players[owner].color
+        tile:setFillColor(color[1]/4, color[2]/4, color[3]/4)
+      end
+    end
+  end
+end
+
+function drawGame(game, oldboard) 
   local displayBoard = drawBoard(10,10, game.board,display)
+  
   for i=1,#game.players do
     local player = game.players[i]
     drawPlayer(player,game.board,displayBoard) 
   end
+
+  updateTilesForOwnership(displayBoard, game)
+  
+  if (oldboard ~= nil) then
+    oldboard:removeSelf()
+    oldboard = nil
+  end
+
   return displayBoard
+end
+
+function advanceGame(game, drawnboard, tile, x,y)
+  game:place(tile,x,y)
+  game:advance()
+  return game, drawGame(game, drawnboard)
 end
 
 -- hide the status bar
 display.setStatusBar( display.HiddenStatusBar )
 local game = Game()
-drawGame(game)
-game:place(H_TILE, 4,4)
-
-game:place(DIAGONAL_TILE,1,1)
-game:place(DIAGONAL_TILE,1,2)
-game:place(H_TILE,2,1)
 local db = drawGame(game)
-game:advance()
-game:advance()
+
+game, db = advanceGame(game, db, DIAGONAL_TILE, 1,1)
+game, db = advanceGame(game, db, H_TILE, 4,4)
+game, db = advanceGame(game, db, X_TILE, 1,2)
+game, db = advanceGame(game, db, X_TILE, 3,4)
+
+--game:place(H_TILE, 4,4)
+
+--game:place(DIAGONAL_TILE,1,1)
+--game:place(DIAGONAL_TILE,1,2)
+--game:place(H_TILE,2,1)
+--db = drawGame(game,db)
 --game:advance()
-db:removeSelf()
-db = nil
-db = drawGame(game)
+--game:advance()
+--game:advance()
+--db = drawGame(game,db)
 
 
