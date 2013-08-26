@@ -1,6 +1,9 @@
+--This work is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License. 
+--To view a copy of this license, visit http://creativecommons.org/licenses/by-nc-sa/3.0/.
+
 PATH_WIDTH = 4
 OUTLINE_WIDTH = 3
-TILE_SIZE = 150 
+TILE_SIZE = 180
 BOARD_SIZE = 4
 PLAYER_SIZE = 10
 PATH_STRIDE = TILE_SIZE/3
@@ -54,8 +57,10 @@ function Game(players)
   function game:advance()
     for i=1,#self.players do
       local player = self.players[i]
-
-      if not(isOffBoard(player, self.board)) then 
+      while 
+        not(isOffBoard(player, self.board))
+        and game.board[player.r][player.c] ~= EMPTY_TILE 
+        do
 
         local tile = game.board[player.r][player.c]
         if (tile ~= EMPTY_TILE) then 
@@ -64,10 +69,9 @@ function Game(players)
           local newgate = TILE_GATE[togate]
           local newrow = newgate.dr + player.r
           local newcol = newgate.dc + player.c
-          local newplayer = Player(newrow, newcol, newgate.dg, player.color)
           game.ownership[player.r][player.c] = i
-
-          game.players[i] = newplayer
+          player = Player(newrow, newcol, newgate.dg, player.color)
+          game.players[i] = player
         end
       end
     end
@@ -190,7 +194,6 @@ function updateTilesForOwnership(displayBoard, game)
       local owner = game.ownership[r][c]
       if (owner ~= 0) then
         local tile = displayBoard.tiles[r][c]
-        print ("----", tile)
         local color = game.players[owner].color
         tile:setFillColor(color[1]/5, color[2]/5, color[3]/5)
       end
@@ -227,13 +230,15 @@ display.setStatusBar( display.HiddenStatusBar )
 local game = Game()
 local db = drawGame(game)
 
-game, db = advanceGame(game, db, DIAGONAL_TILE, 1,1)
-game, db = advanceGame(game, db, H_TILE, 4,4)
-game, db = advanceGame(game, db, X_TILE, 1,2)
-game, db = advanceGame(game, db, X_TILE, 3,4)
-game, db = advanceGame(game, db, CRESCENT_TILE, 1,3)
-game, db = advanceGame(game, db, JOG1_TILE, 2,4)
-game, db = advanceGame(game, db, CORNER_TILE, 2,3)
+
+-----REMOVE COMMENTS BELOW TO STEP GAME
+--game, db = advanceGame(game, db, DIAGONAL_TILE, 1,1)
+--game, db = advanceGame(game, db, H_TILE, 4,4)
+--game, db = advanceGame(game, db, X_TILE, 1,2)
+--game, db = advanceGame(game, db, X_TILE, 3,4)
+--game, db = advanceGame(game, db, CRESCENT_TILE, 1,3)
+--game, db = advanceGame(game, db, JOG1_TILE, 2,4)
+--game, db = advanceGame(game, db, CORNER_TILE, 2,3)
 
 
 
