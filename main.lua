@@ -22,9 +22,15 @@ function Gate(x,y,dr,dc,dg)
   return gate
 end
 
+function isOffBoard(player, board) 
+  return 
+    (player.r <= 0) or (player.r > #board) --NOTE: Assumes a square board
+    or (player.c <=0) or (player.c > #board)
+end
+
 function Game(players)
   local game = {}
-  game.player = Player(4,2,1,BLUE)
+  game.players = {Player(1,1,1,BLUE), Player(BOARD_SIZE, BOARD_SIZE, 5, RED)}
   game.board = makeboard(BOARD_SIZE, EMPTY_TILE)
 
   --Put a tile in a give place
@@ -34,22 +40,23 @@ function Game(players)
 
   --Move players (if possible)
   function game:advance()
-    local player = self.player
-    local gate = TILE_GATE[player.gate]
-    local newrow = gate.dr + player.r
-    local newcol = gate.dc + player.c
+    for i=1,#self.players do
+      local player = self.players[i]
 
-    local offBoard = (newrow <= 0) or (newcol >= #game.board)
-                      or (newcol <=0) or (newcol >= #game.board)
-    if (offBoard) then return end
-    local newtile = game.board[newrow][newcol]
-    print("---", newrow, newcol, newtile == EMPTY_TILE)
-    if (newtile == EMPTY_TILE) then return end
-    print("---", player.r, player.c, newrow, newcol, newtile == EMPTY_TILE)
-    
-    local newgate = newtile[gate.dg]
-    local newplayer = Player(newrow, newcol, newgate, player.color)
-    game.player = newplayer
+      if (isOffBoard(player, self.board)) then return end
+
+      local tile = game.board[player.r][player.c]
+      if (tile == EMPTY_TILE) then return end
+
+      local togate  = tile[player.gate]
+      local newgate = TILE_GATE[togate]
+      local newrow = newgate.dr + player.r
+      local newcol = newgate.dc + player.c
+      local newplayer = Player(newrow, newcol, newgate.dg, player.color)
+      print (i, newrow, newcol)
+
+      game.players[i] = newplayer
+    end
   end
 
   return game
@@ -79,10 +86,12 @@ TILE_GATE = {Gate(PATH_STRIDE,  0,  -1,0,  6),
              Gate(0, PATH_STRIDE*2, 0,-1,4), 
              Gate(0, PATH_STRIDE,   0,-1,3)}
 EMPTY_TILE = {1,2,3,4,5,6,7,8}
-CIRCLE_TILE = {3,4,5,6,7,8,1,2}  
+DIAGONAL_TILE = {4,7,6,1,8,3,2,5}  
 TILE2 = {4,5,6,7,8,1,2,3}
 X_TILE = {5,6,7,8,1,2,3,4}
 H_TILE = {6,5,8,7,2,1,4,3} 
+
+CIRCLE_TILE = {3,4,5,6,7,8,1,2} --Problem is that the paths aren't symetric but drawign doesn't tell you which is "in" and which is "out"
 
 RED = {200,50,50}
 GREEN = {50,200,50}
@@ -103,14 +112,6 @@ function makeboard(size, tile)
   end
   return board
 end
-
-function lineEnds(i1, i2) 
-  g1 = TILE_GATE[i1]
-  g2 = TILE_GATE[i2]
-  return g1.x, g1.y, g2.x, g2.y 
-  --return p1,p2
-end
-
 
 function drawTile(x,y, tile, context) 
   local g = display.newGroup()
@@ -133,8 +134,9 @@ function drawTile(x,y, tile, context)
   end
 
   for i=1,#tile do
-    local a,b,c,d = lineEnds(i,tile[i])
-    l1 = display.newLine(g,a,b,c,d)
+    local g1 = TILE_GATE[i]
+    local g2 = TILE_GATE[tile[i]]
+    l1 = display.newLine(g,g1.x,g1.y,g2.x,g2.y)
     l1.width = PATH_WIDTH
   end
 end
@@ -170,8 +172,15 @@ function drawPlayer(player, board, context)
   local x = ((player.c-1)*TILE_SIZE)+gateloc.x
   local y = ((player.r-1)*TILE_SIZE)+gateloc.y
 
+  local fill = player.color
+  if (isOffBoard(player,board)) then
+    fill = {180,180,180}
+  end
+
+
+
   local c = display.newCircle(x,y,PLAYER_SIZE)
-  c:setFillColor(player.color[1], player.color[2], player.color[3])
+  c:setFillColor(fill[1], fill[2], fill[3])
   if (context ~= display) then
     context:insert(c)
   end
@@ -179,20 +188,28 @@ end
 
 function drawGame(game) 
   local displayBoard = drawBoard(10,10, game.board,display)
-  drawPlayer(game.player,board,displayBoard)
+  for i=1,#game.players do
+    local player = game.players[i]
+    drawPlayer(player,game.board,displayBoard) 
+  end
+  return displayBoard
 end
 
 -- hide the status bar
 display.setStatusBar( display.HiddenStatusBar )
 local game = Game()
 drawGame(game)
-game:place(H_TILE,1,2)
-game:place(H_TILE,2,2)
-game:place(H_TILE,3,2)
-drawGame(game)
+game:place(H_TILE, 4,4)
+
+game:place(DIAGONAL_TILE,1,1)
+game:place(DIAGONAL_TILE,1,2)
+game:place(H_TILE,2,1)
+local db = drawGame(game)
 game:advance()
 game:advance()
-game:advance()
-drawGame(game)
+--game:advance()
+db:removeSelf()
+db = nil
+db = drawGame(game)
 
 
