@@ -1,16 +1,27 @@
------------------------------------------------------------------------------------------
---
--- main.lua
---
--- A Tile is a list of mappings
--- Each entry/exit gets an index value
--- and the value tells it which other point to connect to
---
--- A board is a 2D table of tiles (some of which may be nil)
---
--- A player is a 3D coordinate: R,C,gate
---
------------------------------------------------------------------------------------------
+PATH_WIDTH = 4
+OUTLINE_WIDTH = 3
+TILE_SIZE = 150 
+BOARD_SIZE = 4
+PLAYER_SIZE = 10
+PATH_STRIDE = TILE_SIZE/3
+EMPTY_TILE = {1,2,3,4,5,6,7,8}
+DIAGONAL_TILE = {4,7,6,1,8,3,2,5}  
+TILE2 = {4,5,6,7,8,1,2,3}
+X_TILE = {5,6,7,8,1,2,3,4}
+H_TILE = {6,5,8,7,2,1,4,3} 
+XBAR_TILE = {5,6,8,7,1,2,4,3}
+CORNER_TILE = {8,3,2,5,4,7,6,1}
+CRESCENT_TILE = {4,3,2,1,8,7,6,5}
+FUNNEL_TILE = {4,8,6,1,7,3,5,2}
+JOG1_TILE = {5,4,8,2,1,7,6,3}
+
+CIRCLE_TILE = {3,4,5,6,7,8,1,2} --Problem is that the paths aren't symetric but drawign doesn't tell you which is "in" and which is "out"
+
+RED = {200,50,50}
+GREEN = {50,200,50}
+BLUE = {50,50,200}
+
+
 --local pieces = require("pieces")
 function Gate(x,y,dr,dc,dg)
   local gate={}
@@ -74,12 +85,6 @@ function Player(r,c,gate,color)
   return player
 end
 
-PATH_WIDTH = 4
-OUTLINE_WIDTH = 3
-TILE_SIZE = 150 
-BOARD_SIZE = 4
-PLAYER_SIZE = 10
-PATH_STRIDE = TILE_SIZE/3
 TILE_GATE = {Gate(PATH_STRIDE,  0,  -1,0,  6),
              Gate(PATH_STRIDE*2,0,  -1,0,  5),
              Gate(TILE_SIZE, PATH_STRIDE,  0,1,  8), 
@@ -88,17 +93,6 @@ TILE_GATE = {Gate(PATH_STRIDE,  0,  -1,0,  6),
              Gate(PATH_STRIDE, TILE_SIZE,  1,0,  1),
              Gate(0, PATH_STRIDE*2, 0,-1,4), 
              Gate(0, PATH_STRIDE,   0,-1,3)}
-EMPTY_TILE = {1,2,3,4,5,6,7,8}
-DIAGONAL_TILE = {4,7,6,1,8,3,2,5}  
-TILE2 = {4,5,6,7,8,1,2,3}
-X_TILE = {5,6,7,8,1,2,3,4}
-H_TILE = {6,5,8,7,2,1,4,3} 
-
-CIRCLE_TILE = {3,4,5,6,7,8,1,2} --Problem is that the paths aren't symetric but drawign doesn't tell you which is "in" and which is "out"
-
-RED = {200,50,50}
-GREEN = {50,200,50}
-BLUE = {50,50,200}
 
 function makegrid(size, tile) 
   if (tile == nil) then
@@ -198,7 +192,7 @@ function updateTilesForOwnership(displayBoard, game)
         local tile = displayBoard.tiles[r][c]
         print ("----", tile)
         local color = game.players[owner].color
-        tile:setFillColor(color[1]/4, color[2]/4, color[3]/4)
+        tile:setFillColor(color[1]/5, color[2]/5, color[3]/5)
       end
     end
   end
@@ -237,16 +231,10 @@ game, db = advanceGame(game, db, DIAGONAL_TILE, 1,1)
 game, db = advanceGame(game, db, H_TILE, 4,4)
 game, db = advanceGame(game, db, X_TILE, 1,2)
 game, db = advanceGame(game, db, X_TILE, 3,4)
+game, db = advanceGame(game, db, CRESCENT_TILE, 1,3)
+game, db = advanceGame(game, db, JOG1_TILE, 2,4)
+game, db = advanceGame(game, db, CORNER_TILE, 2,3)
 
---game:place(H_TILE, 4,4)
 
---game:place(DIAGONAL_TILE,1,1)
---game:place(DIAGONAL_TILE,1,2)
---game:place(H_TILE,2,1)
---db = drawGame(game,db)
---game:advance()
---game:advance()
---game:advance()
---db = drawGame(game,db)
 
 
